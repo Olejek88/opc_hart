@@ -1,14 +1,16 @@
+#define _CRT_SECURE_NO_WARNINGS
 #define _WIN32_DCOM				// Enables DCOM extensions
 #define INITGUID				// Initialize OLE constants
 
+//#include <atlbase.h>
 #include <stdio.h>
 #include <math.h>				// some mathematical function
-#include "afxcmn.h"				// MFC function such as CString,....
+//#include "afxcmn.h"				// MFC function such as CString,....
 #include "hartbus.h"			// no comments
 #include "hartdrv.h"			// no comments
 #include "unilog.h"				// universal utilites for creating log-files
 #include <locale.h>				// set russian codepage
-#include <opcda.h>				// basic function for OPC:DA
+#include "opcda.h"				// basic function for OPC:DA
 #include "lightopc.h"			// light OPC library header file
 #include "serialport.h"			// function for work with Serial Port
 
@@ -38,7 +40,7 @@ static char *tn[100];			// Tag name
 char argv0[FILENAME_MAX + 32];	// lenght of command line (file+path (260+32))
 unilog *logg=NULL;				// new structure of unilog
 static OPCcfg cfg;				// new structure of cfg
-CSerialPort port;				// com-port
+SerialPort port;				// com-port
 void addCommToPoll();			// add commands to read list
 UINT ScanBus();					// bus scanned programm
 UINT PollDevice(int device);	// polling single device
@@ -539,8 +541,8 @@ int WriteTags(const loCaller *ca,
 void activation_monitor(const loCaller *ca, int count, loTagPair *til)
 {}
 //-------------------------------------------------------------------
-CString Device[16];			// id устройств
-CString DeviceD[16];		// data с устройств
+CHAR Device[16][300];			// id устройств
+CHAR DeviceD[16][300];		// data с устройств
 int tcount=0;
 struct DeviceData 
 	{
@@ -686,7 +688,6 @@ for (i=0; i<devp->cv_size; i++)
 // data - massive to send 
 HRESULT WriteDevice(int device,const unsigned cmdnum,LPSTR data)
 {
-try {
 	int nump,cnt_false,cnt;
 	unsigned int k,j,i;
 	unsigned char Out[45];
@@ -744,21 +745,13 @@ try {
 	}
 	return E_FAIL;
 }
-catch (CSerialException* pEx)
-{
-    TRACE(_T("Handle Exception, Message:%s\n"), pEx->GetErrorMessage());
-    pEx->Delete();
-	return 2;
-}
-}
 //-----------------------------------------------------------------------------------
 UINT PollDevice(int device)
 {
-try {
-	int cnt=0,c0m=0, nump, chff=0, num_bytes=0, startid=0, cnt_false=0;
+	int i=0,cnt=0,c0m=0, nump, chff=0, num_bytes=0, startid=0, cnt_false=0;
 	const int sBuf[] = {0xff,0xff,0xff,0xff,0xff,0x2,0x80,0x0,0x0,0x82};
-	Device[device]="";		// id устройств
-	DeviceD[device]="";		// data с устройств
+	//Device[device]="";		// id устройств
+	//DeviceD[device]="";		// data с устройств
 	unsigned char sBuf1[40];
 	unsigned char Out[15];
 	unsigned char DId[80];
@@ -777,7 +770,7 @@ try {
 	{
 	port.SetRTS ();
 	if (DTRHIGH) port.SetDTR (); else port.ClearDTR ();
-	for (int i=0;i<=11;i++) 	Out[i] = (char) sBuf[i]; // 5 первых ff + стандарт команды
+	for (i=0;i<=11;i++) 	Out[i] = (char) sBuf[i]; // 5 первых ff + стандарт команды
 	Out[6]=0x80+device; Out[7]=0; Out[9]=Out[5]^Out[6]^Out[7]^Out[8];
 	for (i=0;i<=11;i++) 
 	{		port.Write(Outt+i, 1);	port.WaitEvent (dwStoredFlags);	}	
@@ -828,7 +821,7 @@ try {
 //-----------------------------------------------------------------------------------
 	 port.SetRTS ();
 	 if (DTRHIGH) port.SetDTR (); else port.ClearDTR ();	
-	for (int i=0;i<=13;i++) 	Out[i] = (char) sBuf[i];	
+	for (i=0;i<=13;i++) 	Out[i] = (char) sBuf[i];	
 	Out[5]=0x82; 
 	Out[6]=DId[device*5]; Out[7]=DId[device*5+1];  Out[8]=DId[device*5+2]; Out[9]=DId[device*5+3]; 
 	Out[10]=DId[device*5+4]; Out[11]=mBuf[c0m];  Out[12]=0x0; 
@@ -943,102 +936,94 @@ try {
 		{
 			 switch (DData[device].manufacturerId)
 				{
-				case 17: Device[device] += " Endress+Hauser. "; break;
-				default: Device[device] += " Udentifined. ";
+				case 17: sprintf_s (Device[device],15," Endress+Hauser. "); break;
+				default: sprintf_s(Device[device],15 , " Udentifined. ");
 				}
 
 				switch (DData[device].devicetypeId)
 				{				
-				case 14: Device[device] += " Cerabar M. "; break;
-				case 80: Device[device] += " Promass80. "; break;
-				case 83: Device[device] += " Promass40. "; break;
-				case 200: Device[device] += " TMT182. "; break;
-				case 201: Device[device] += " TMT122. "; break;
-				case 202: Device[device] += " TMT162. "; break;
-				default: Device[device] += " Udentifined. ";
+				case 14: sprintf_s(Device[device],15 , " Cerabar M. "); break;
+				case 80: sprintf_s(Device[device],15 , " Promass80. "); break;
+				case 83: sprintf_s(Device[device],15 , " Promass40. "); break;
+				case 200: sprintf_s(Device[device],15 , " TMT182. "); break;
+				case 201: sprintf_s(Device[device],15 , " TMT122. "); break;
+				case 202: sprintf_s(Device[device],15 , " TMT162. "); break;
+				default: sprintf_s(Device[device],15 , " Udentifined. ");
 				}
-			 Device[device] += " id: "; 
+			 sprintf_s(Device[device],15 , " id: "); 
 			 cnt = DData[device].deviceId[0] * 256 * 256 + DData[device].deviceId[1] * 256 + DData[device].deviceId[2];
-			 Device[device] += itoa (cnt,buffer,10);
-			 Device[device] += " com.rev.No: ";
-			 Device[device] += itoa (DData[device].uncomrevNo,buffer,10);
- 			 Device[device] += " dcc.rev.No: ";
-			 Device[device] += itoa (DData[device].dccrevNo,buffer,10);
-  			 Device[device] += " soft.rev.No: ";
-			 Device[device] += itoa (DData[device].softRev,buffer,10);
-  			 Device[device] += " hard.rev: ";
-			 Device[device] += itoa (DData[device].hardRev,buffer,10);
+			 sprintf_s(Device[device],15 , _itoa (cnt,buffer,10));
+			 sprintf_s(Device[device],15 , " com.rev.No: ");
+			 sprintf_s(Device[device],15 , _itoa (DData[device].uncomrevNo,buffer,10));
+ 			 sprintf_s(Device[device],15 , " dcc.rev.No: ");
+			 sprintf_s(Device[device],15 , _itoa (DData[device].dccrevNo,buffer,10));
+  			 sprintf_s(Device[device],15 , " soft.rev.No: ");
+			 sprintf_s(Device[device],15 , _itoa (DData[device].softRev,buffer,10));
+  			 sprintf_s(Device[device],15 , " hard.rev: ");
+			 sprintf_s(Device[device],15 , _itoa (DData[device].hardRev,buffer,10));
 
-			 DeviceD[device] += "PV: ";
-			 DeviceD[device] += _gcvt (cIEEE754toFloat(DData[device].PV),8,buffer);
+			 sprintf_s(DeviceD[device],10 , "PV: ");
+			 sprintf_s(DeviceD[device],10 , _gcvt (cIEEE754toFloat(DData[device].PV),8,buffer));
 		     switch (DData[device].hUnitCodePV)
 				{
-				case 32: DeviceD[device] += " (°C) "; break;
-				case 36: DeviceD[device] += " (mV) "; break;
-				case 96: DeviceD[device] += " (kg/l) "; break;
-				case 61: DeviceD[device] += " (kg) "; break;
-				case 65: DeviceD[device] += " (LTon) "; break;
-				case 75: DeviceD[device] += " (kg/h) "; break;
-				default: DeviceD[device] += " (h/z) ";
+				case 32: sprintf_s(DeviceD[device],10 , " (°C) "); break;
+				case 36: sprintf_s(DeviceD[device],10 , " (mV) "); break;
+				case 96: sprintf_s(DeviceD[device],10 , " (kg/l) "); break;
+				case 61: sprintf_s(DeviceD[device],10 , " (kg) "); break;
+				case 65: sprintf_s(DeviceD[device],10 , " (LTon) "); break;
+				case 75: sprintf_s(DeviceD[device],10 , " (kg/h) "); break;
+				default: sprintf_s(DeviceD[device],10 , " (h/z) ");
 				}
-			 DeviceD[device] += " mV: ";
-			 DeviceD[device] += _gcvt (cIEEE754toFloat(DData[device].hAC),8,buffer);
- 			 DeviceD[device] += " (";
-			 DeviceD[device] += _gcvt (cIEEE754toFloat(DData[device].hPrecent),8,buffer);
-			 DeviceD[device] += "%) ";
+			 sprintf_s(DeviceD[device],10 , " mV: ");
+			 sprintf_s(DeviceD[device],10 , _gcvt (cIEEE754toFloat(DData[device].hAC),8,buffer));
+ 			 sprintf_s(DeviceD[device] ,10, " (");
+			 sprintf_s(DeviceD[device],10 , _gcvt (cIEEE754toFloat(DData[device].hPrecent),8,buffer));
+			 sprintf_s(DeviceD[device],10 , "%) ");
 
-			 DeviceD[device] += " SV: ";
-			 DeviceD[device] += _gcvt (cIEEE754toFloat(DData[device].SV),10,buffer);
+			 sprintf_s(DeviceD[device],10 , " SV: ");
+			 sprintf_s(DeviceD[device],10 , _gcvt (cIEEE754toFloat(DData[device].SV),10,buffer));
 			 switch (DData[device].hUnitCodeSV)
 				{
-				case 32: DeviceD[device] += " (°C) "; break;
-				case 36: DeviceD[device] += " (mV) "; break;
-				case 96: DeviceD[device] += " (kg/l) "; break;
-				case 61: DeviceD[device] += " (kg) "; break;
-				case 65: DeviceD[device] += " (LTon) "; break;
-				case 75: DeviceD[device] += " (kg/h) "; break;
-				default: DeviceD[device] += " (h/z) ";
+				case 32: sprintf_s(DeviceD[device],10 , " (°C) "); break;
+				case 36: sprintf_s(DeviceD[device],10 , " (mV) "); break;
+				case 96: sprintf_s(DeviceD[device],10 , " (kg/l) "); break;
+				case 61: sprintf_s(DeviceD[device],10 , " (kg) "); break;
+				case 65: sprintf_s(DeviceD[device],10 , " (LTon) "); break;
+				case 75: sprintf_s(DeviceD[device],10 , " (kg/h) "); break;
+				default: sprintf_s(DeviceD[device],10 , " (h/z) ");
 				}			 
-			 DeviceD[device] += " TV: ";
-			 DeviceD[device] += _gcvt (cIEEE754toFloat(DData[device].TV),8,buffer);
+			 sprintf_s(DeviceD[device],10 , " TV: ");
+			 sprintf_s(DeviceD[device],10 , _gcvt (cIEEE754toFloat(DData[device].TV),8,buffer));
 			 switch (DData[device].hUnitCodeTV)
 				{
-				case 32: DeviceD[device] += " (°C) "; break;
-				case 36: DeviceD[device] += " (mV) "; break;
-				case 96: DeviceD[device] += " (kg/l) "; break;
-				case 65: DeviceD[device] += " (LTon) "; break;
-				case 61: DeviceD[device] += " (kg) "; break;
-				case 75: DeviceD[device] += " (kg/h) "; break;
-				default: DeviceD[device] += " (h/z) ";
+				case 32: sprintf_s(DeviceD[device],10 , " (°C) "); break;
+				case 36: sprintf_s(DeviceD[device],10 , " (mV) "); break;
+				case 96: sprintf_s(DeviceD[device],10 , " (kg/l) "); break;
+				case 65: sprintf_s(DeviceD[device],10 , " (LTon) "); break;
+				case 61: sprintf_s(DeviceD[device],10 , " (kg) "); break;
+				case 75: sprintf_s(DeviceD[device],10 , " (kg/h) "); break;
+				default: sprintf_s(DeviceD[device],10 , " (h/z) ");
 				}			 
-			 DeviceD[device] += " FV: ";
-			 DeviceD[device] += _gcvt (cIEEE754toFloat(DData[device].FV),8,buffer);
+			 sprintf_s(DeviceD[device],10 , " FV: ");
+			 sprintf_s(DeviceD[device],10 , _gcvt (cIEEE754toFloat(DData[device].FV),8,buffer));
 			 switch (DData[device].hUnitCodeFV)
 				{
-				case 32: DeviceD[device] += " (°C) "; break;
-				case 36: DeviceD[device] += " (mV) "; break;
-				case 96: DeviceD[device] += " (kg/l) "; break;
-				case 65: DeviceD[device] += " (LTon) "; break;
-				case 61: DeviceD[device] += " (kg) "; break;
-				case 75: DeviceD[device] += " (kg/h) "; break;
-				default: DeviceD[device] += " (h/z) ";
+				case 32: sprintf_s(DeviceD[device],10 , " (°C) "); break;
+				case 36: sprintf_s(DeviceD[device],10 , " (mV) "); break;
+				case 96: sprintf_s(DeviceD[device],10 , " (kg/l) "); break;
+				case 65: sprintf_s(DeviceD[device],10 , " (LTon) "); break;
+				case 61: sprintf_s(DeviceD[device],10 , " (kg) "); break;
+				case 75: sprintf_s(DeviceD[device],10 , " (kg/h) "); break;
+				default: sprintf_s(DeviceD[device],10 , " (h/z) ");
 				}			 
-			 DeviceD[device] += " Message: "; 
-			for (cnt=0;cnt<26;cnt++) DeviceD[device] += DData[device].message[cnt];
+			//sprintf_s(DeviceD[device],10," Message: "); 
+			//for (cnt=0;cnt<26;cnt++) sprintf_s(DeviceD[device],100,DData[device].message[cnt]);
 			UL_DEBUG((LOGID, "Device reply a: %s.",Device[device]));
 			UL_DEBUG((LOGID, "Device reply b: %s.",DeviceD[device]));
 			return 1;
 		}
-//-----------------------------------------------------------------------------------	
-	}	
-	return 0;
-}
-catch (CSerialException* pEx)
-{
-    TRACE(_T("Handle Exception, Message:%s\n"), pEx->GetErrorMessage());
-    pEx->Delete();
-	return 2;
-}
+	}
+ return 0;
 }
 //-------------------------------------------------------------------
 int init_tags(void)
@@ -1123,17 +1108,9 @@ UINT DestroyDriver()
       DeleteCriticalSection(&lk_values);						// destroy CS
       my_service = 0;		
     }
-try {
-	 port.Close();
-	 UL_INFO((LOGID, "Close COM-port"));						// write in log
-	 return	1;
-	}
-catch (CSerialException* pEx)
-	{
-	 UL_ERROR((LOGID, "Error when closing COM-port"));			// write in log
-	 pEx->Delete();
-	 return 0;
-	}
+ port.Close();
+ UL_INFO((LOGID, "Close COM-port"));						// write in log
+ return	1;
 }
 //-------------------------------------------------------------------
 UINT InitDriver()
@@ -1159,14 +1136,13 @@ UINT InitDriver()
  if (ecode) return 1;									// error to create service	
  InitializeCriticalSection(&lk_values);
 
-	try {
 			COMMTIMEOUTS timeouts;
 			char buf[50]; char *pbuf=buf; 
 			pbuf = ReadParam ("Port","COM");			
 			comp = atoi(pbuf);
 			pbuf = ReadParam ("Port","Speed");			
 			speed = atoi(pbuf);
-			port.Open(comp,speed,CSerialPort::OddParity, 8, CSerialPort::OneStopBit, CSerialPort::NoFlowControl, FALSE);
+			port.Open(comp,speed,SerialPort::OddParity, 8, SerialPort::OneStopBit, SerialPort::NoFlowControl, FALSE);
 			UL_INFO((LOGID, "Opening port COM%d",comp));		// write in log			
 			timeouts.ReadIntervalTimeout = 50; 
 			timeouts.ReadTotalTimeoutMultiplier = 0; 
@@ -1175,17 +1151,8 @@ UINT InitDriver()
 			timeouts.WriteTotalTimeoutConstant = 50; 
 			port.SetTimeouts(timeouts);
 			UL_INFO((LOGID, "Set COM-port timeouts 50:0:200:0:50"));		// write in log
-		}
-	catch (CSerialException* pEx)
-		{
-			TRACE(_T("Handle Exception, Message:%s\n"), pEx->GetErrorMessage());
-			UL_ERROR((LOGID, "Unable open COM-port"));		// write in log
-			pEx->Delete();
-			return 1;
-		}
 
-	try {
- 		 UL_INFO((LOGID, "Scan bus"));									// write in log 
+		UL_INFO((LOGID, "Scan bus"));									// write in log 
 		 if (ScanBus()) { 
 							UL_INFO((LOGID, "Total %d devices found",devp->idnum)); 
 							if (init_tags()) 
@@ -1196,21 +1163,14 @@ UINT InitDriver()
 							UL_ERROR((LOGID, "No devices found")); 
 							return 1; 
 						}
-		}
-	catch (CSerialException* pEx)
-		{
-			UL_ERROR((LOGID, "ScanBus unknown error"));		// write in log
-			pEx->Delete();
-			return 1;
-		}
 }
 //----------------------------------------------------------------------------------------
 UINT ScanBus()
 {
-const int sBuf[] = {0xff,0xff,0xff,0xff,0xff,0x2,0x80,0x0,0x0,0x82};	// short frame
+const int sBuf[] = {0xff,0xff,0xff,0xff,0xff,0x2,0x0,0x0,0x0,0x82};	// short frame
 unsigned char Out[15],sBuf1[40];
 unsigned char *Outt = Out,*Int = sBuf1;
-int cnt,cnt_false, chff=0;
+int cnt,i,cnt_false, chff=0;
 DWORD dwStoredFlags;
 dwStoredFlags = EV_RXCHAR | EV_TXEMPTY | EV_RXFLAG;	
 COMSTAT comstat;
@@ -1225,10 +1185,13 @@ for (int adr=0;adr<=HARTCOM_ID_MAX;adr++)
 		 port.SetRTS ();		 
 		 if (nump<2) port.ClearDTR ();
 		 if (nump>1) port.SetDTR ();
-		 for (int i=0;i<=11;i++) 	Out[i] = (char) sBuf[i]; // 5 первых ff + стандарт команды
-		 Out[6]=0x80+adr; Out[7]=0; Out[9]=Out[5]^Out[6]^Out[7]^Out[8];
+		 
+		 for (i=0;i<=11;i++) 	Out[i] = (char) sBuf[i]; // 5 первых ff + стандарт команды
+		 Out[6]=adr; Out[7]=0; Out[9]=Out[5]^Out[6]^Out[7]^Out[8];
+		 if (nump==3) Out[7]=0x10;
+		 UL_INFO((LOGID, "out: 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x",Out[0],Out[1],Out[2],Out[3],Out[4],Out[5],Out[6],Out[7],Out[8],Out[9],Out[10],Out[11]));
 		 for (i=0;i<=11;i++) 
-			{	port.Write(Outt+i, 1);	port.WaitEvent (dwStoredFlags);	}		 
+		 {	port.Write(Outt+i, 1);	port.WaitEvent (dwStoredFlags);	}		 
 		 port.SetDTR (); port.ClearRTS ();
 		 Int = sBuf1;	cnt_false=0;
 		 for (cnt=0;cnt<26;cnt++)
@@ -1239,7 +1202,8 @@ for (int adr=0;adr<=HARTCOM_ID_MAX;adr++)
 				port.GetStatus (comstat);
 			}
 //-----------------------------------------------------------------------------------
-	BOOL bcFF_OK = FALSE;	BOOL bcFF_06 = FALSE;
+    if (cnt_false<4) UL_INFO((LOGID, "in: 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x",sBuf1[0],sBuf1[1],sBuf1[2],sBuf1[3],sBuf1[4],sBuf1[5],sBuf1[6],sBuf1[7],sBuf1[8],sBuf1[9],sBuf1[10],sBuf1[11]));
+    BOOL bcFF_OK = FALSE;	BOOL bcFF_06 = FALSE;
 	for (cnt=0;cnt<36;cnt++)
 		{ 
 		 if (sBuf1[cnt]==0xff) {chff++; if (chff>3) bcFF_OK = TRUE;} else chff=0;
@@ -1298,8 +1262,8 @@ for (int j=1;j<=3;j++)		// 23 значная мантисса
 		 mask = mask/2; zn=zn/2; }
 		}
 	}
-res = res * pow (2,exp);
-tmp = 1*pow (10,-15);
+res = res * pow ((double)2,exp);
+tmp = 1*pow ((double)10,-15);
 if (res<tmp) res=0;
 if (sign) res = -res;
 return res;
@@ -1337,7 +1301,7 @@ for (j=1;j<=23;j++)			// j=2
 		{
 		 pr12=temp;			// pr12=1.5
 		 i=1+j/8;			// 1
-		 k=(int) pow (2,7-j%8);	// 0x20
+		 k=(int) pow ((double)2,7-j%8);	// 0x20
 		 buf[i]=buf[i]+(char)k;
 		}
 	}
@@ -1370,8 +1334,8 @@ for (int j=1;j<=3;j++)		// 23 значная мантисса
 		 mask = mask/2; zn=zn/2; }
 		}
 	}
-res = res * pow (2,exp);
-tmp = 1*pow (10,-15);
+res = res * pow ((double)2,exp);
+tmp = 1*pow ((double)10,-15);
 if (res<tmp) res=0;
 if (sign) res = -res;
 return res;
